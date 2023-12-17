@@ -68,6 +68,7 @@ createWeb3Modal({
 
 function Methods() {
   const [istoggle, setIstoggle] = useState(false);
+  const [isLodMe, setlod] = useState(false);
   const [value, setValue] = useState("");
   const [isinput, setinput] = useState(true);
   const [fee, setFee] = useState("");
@@ -101,17 +102,17 @@ function Methods() {
     console.log("Bit", BitBerryContract);
 
     let Balance = await contract.checkUserBalance(address);
-    UserBalance = ethers.utils.formatUnits(Balance, 19); // 1
+    UserBalance = ethers.utils.formatUnits(Balance, 18); // 1
     // console.log("UserBalance:", UserBalance.toNumber());
     let vlaue = await contract.getUserInvestedBalance(address);
-    InvestedBalance = ethers.utils.formatUnits(vlaue, 19); // 1
+    InvestedBalance = ethers.utils.formatUnits(vlaue, 18); // 1
 
     // GetReff = await contract.getReferrer(address);
     isRewardClaimed = await contract.isRewardClaimed(address);
     let ReferralCount = await contract.getReferralCount(address);
     getReferralCount = ethers.utils.formatUnits(ReferralCount);
     let Amount = await contract.getUserStakedAmount(address);
-    getUserStakedAmount = ethers.utils.formatUnits(Amount, 19);
+    getUserStakedAmount = ethers.utils.formatUnits(Amount, 18);
 
     TotalStacked = await contract.getTotalStaked();
     const ref = await contract.getReferrer(address);
@@ -167,24 +168,41 @@ function Methods() {
   const stack = async () => {
     try {
       if (!isinput && value) {
+        setlod(true);
         const amountoftoken = await contract.STAKE_AMOUNT();
-        // const Amt = am*2;
-        const approveAmount = await BitBerryContract.approve(
-          ContractAddress,
-          amountoftoken
+        const CheckIfBalanceApproved = await BitBerryContract.allowance(
+          address,
+          ContractAddress
         );
-        console.log("amount", approveAmount.hash);
-        if (approveAmount) {
-          const st = await contract.stake(value);
-          console.log("st", st);
+        if (CheckIfBalanceApproved >= amountoftoken) {
+          const txStake = await contract.stake(value);
+          txStake.wait(1);
+          alert("Staked! Token Done!");
+        } else {
+          const txApprovel = await BitBerryContract.approve(
+            ContractAddress,
+            amountoftoken
+          );
+          await txApprovel.wait(1);
+          if (txApprovel.hash) {
+            alert(txApprovel.hash);
+            const txStake = await contract.stake(value);
+            await txStake.wait(1);
+            alert("Staked! Done!");
+          } else {
+            alert("Something Wrong! try again");
+          }
         }
-      }else{
+      } else {
+        setlod(false);
         alert("Enter Reffer First");
       }
     } catch (error) {
+      setlod(false);
       if (error.message && error.message.includes("revert")) {
         const revertMessage = error.message.split("revert")[1]; // Extract message after "revert"
         alert(revertMessage.slice(0, 30));
+        console.log(revertMessage);
       } else {
         console.log("Unknown error occurred", error);
         alert(error);
@@ -249,12 +267,22 @@ function Methods() {
                           </>
                         )}
                       </div>
-                      <button
-                        onClick={() => stack()}
-                        className=" mt-5 text-white border-2 p-1 bg-blue-400 hover:bg-transparent hover:text-black border-blue-400 "
-                      >
-                        Participate in Airdrop
-                      </button>
+                      {isLodMe ? (
+                        <button
+                          // onClick={() => stack()}
+                          disabled
+                          className=" mt-5 text-white border-2 p-1 bg-blue-400 hover:bg-transparent hover:text-black border-blue-400 "
+                        >
+                          Loading...
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => stack()}
+                          className=" mt-5 text-white border-2 p-1 bg-blue-400 hover:bg-transparent hover:text-black border-blue-400 "
+                        >
+                          Participate in Airdrop
+                        </button>
+                      )}
                     </div>
                   </div>
 
